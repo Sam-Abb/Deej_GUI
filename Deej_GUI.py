@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QComboBox, QCheckBox, QLineEdit, QLabel, QSpinBox, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QListWidget, QCheckBox, QLineEdit, QLabel, QSpinBox, QMessageBox, QComboBox, QGridLayout
 from PyQt5.QtWidgets import QFileDialog
 import psutil
 import yaml
@@ -38,24 +38,34 @@ class App(QWidget):
         # Input field for the number of sliders
         self.layout.addWidget(QLabel("Number of sliders"))
         self.slider_count = QSpinBox()
+
         self.slider_count.setRange(1, 10)  # allow 1-10 sliders
         self.slider_count.setValue(5)  # default value
         self.layout.addWidget(self.slider_count)
 
-        # Create a separate layout for the dropdowns
-        self.dropdown_layout = QVBoxLayout()
-        self.layout.addLayout(self.dropdown_layout)
+        # Create a separate grid layout for the lists
+        self.list_layout = QGridLayout()
+        self.layout.addLayout(self.list_layout)
 
-        # Create a dropdown menu for each slider
-        self.dropdowns = []
+        # Create separate lists for the labels and lists
+        self.labels = []
+        self.lists = []
+
         for i in range(self.slider_count.value()):
-            dropdown = QComboBox()
-            dropdown.addItems(self.apps)
-            self.dropdown_layout.addWidget(dropdown)
-            self.dropdowns.append(dropdown)
+            # Add a label before each list
+            label = QLabel(f"Slider {i}")
+            self.list_layout.addWidget(label, i % 4, 2 * (i // 4))
+            self.labels.append(label)
 
-        # Update the dropdown menus when the slider count changes
-        self.slider_count.valueChanged.connect(self.update_dropdowns)
+            list_widget = QListWidget()
+            list_widget.addItems(self.apps)
+            list_widget.setSelectionMode(QListWidget.MultiSelection)  # allow multiple selection
+            list_widget.setFixedHeight(100)  # set the height to show approximately 5 lines
+            self.list_layout.addWidget(list_widget, i % 4, 2 * (i // 4) + 1)
+            self.lists.append(list_widget)
+
+        # Update the lists when the slider count changes
+        self.slider_count.valueChanged.connect(self.update_lists)
 
         # Checkbox for invert_sliders
         self.invert_sliders = QCheckBox("Invert sliders")
@@ -88,20 +98,40 @@ class App(QWidget):
         self.setLayout(self.layout)
 
         self.show()
+        self.setFixedWidth(self.width())
 
-    def update_dropdowns(self):
-        # Remove all existing dropdowns
-        for dropdown in self.dropdowns:
-            self.dropdown_layout.removeWidget(dropdown)
-            dropdown.deleteLater()
-        self.dropdowns = []
 
-        # Add new dropdowns based on the slider count
+
+    def update_lists(self):
+        # Remove all existing labels and lists
+        for label in self.labels:
+            self.list_layout.removeWidget(label)
+            label.deleteLater()
+        self.labels = []
+
+        for list_widget in self.lists:
+            self.list_layout.removeWidget(list_widget)
+            list_widget.deleteLater()
+        self.lists = []
+
+        # Add new labels and lists based on the slider count
         for i in range(self.slider_count.value()):
-            dropdown = QComboBox()
-            dropdown.addItems(self.apps)
-            self.dropdown_layout.addWidget(dropdown)
-            self.dropdowns.append(dropdown)
+            label = QLabel(f"Slider {i}")
+            self.list_layout.addWidget(label, i % 4, 2 * (i // 4))
+            self.labels.append(label)
+
+            list_widget = QListWidget()
+            list_widget.addItems(self.apps)
+            list_widget.setSelectionMode(QListWidget.MultiSelection)  # allow multiple selection
+            list_widget.setFixedHeight(100)  # set the height to show approximately 5 lines
+            self.list_layout.addWidget(list_widget, i % 4, 2 * (i // 4) + 1)
+            self.lists.append(list_widget)
+
+        # Adjust the height of the window to fit the contents
+            #self.setFixedHeight(self.layout.sizeHint().height())
+            self.show()
+            self.setFixedHeight(self.height())
+            self.adjustSize()
 
     def save_config(self):
         # Get the save location from the user
@@ -114,7 +144,7 @@ class App(QWidget):
                 save_location += '.yaml'
 
             # Update the config dictionary based on the UI inputs
-            self.config["slider_mapping"] = {i: self.dropdowns[i].currentText() for i in
+            self.config["slider_mapping"] = {i: [item.text() for item in self.lists[i].selectedItems()] for i in
                                              range(self.slider_count.value())}
             self.config["invert_sliders"] = self.invert_sliders.isChecked()
             self.config["com_port"] = self.com_port.text()
@@ -132,11 +162,11 @@ class App(QWidget):
             msg.setWindowTitle("Success")
             msg.exec_()
 
-
 def main():
-    app = QApplication(sys.argv)
-    ex = App()
-    sys.exit(app.exec_())
+        app = QApplication(sys.argv)
+        ex = App()
+        sys.exit(app.exec_())
 
 if __name__ == '__main__':
-    main()
+        main()
+
